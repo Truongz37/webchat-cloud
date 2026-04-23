@@ -2,34 +2,167 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Đăng ký Web Chat</title>
+    <title>Đăng Ký - Web Chat Cloud</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --primary-gold: #FFD700;
+            --primary-gold-hover: #e6c200;
+            --text-color: #FFFFFF;
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: radial-gradient(circle at top left, #2a2a2a, #121212);
+        }
+
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--border-color);
+            padding: 40px;
+            border-radius: 16px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            color: var(--primary-gold);
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-gold);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-gold);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--primary-gold-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+        }
+
+        .links {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .links a {
+            color: var(--primary-gold);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+            color: #fff;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-size: 0.9em;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-<h2>Đăng ký Tài khoản</h2>
-<form id="registerForm">
-    <input type="text" id="username" placeholder="Tên đăng nhập" required>
-    <input type="password" id="password" placeholder="Mật khẩu" required>
-    <button type="submit">Đăng ký</button>
-</form>
-<p>Đã có tài khoản? <a href="/login.html">Đăng nhập ngay</a></p>
+    <div class="glass-panel">
+        <h2>Đăng Ký</h2>
+        <form id="registerForm">
+            <div class="input-group">
+                <label for="username">Tên đăng nhập</label>
+                <input type="text" id="username" name="username" required autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label for="password">Mật khẩu</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Tạo Tài Khoản</button>
+        </form>
+        <div id="message"></div>
+        <div class="links">
+            Đã có tài khoản? <a href="/login.html">Đăng nhập</a>
+        </div>
+    </div>
 
-<script>
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const u = document.getElementById('username').value;
-        const p = document.getElementById('password').value;
-
-        // Gửi dữ liệu đăng ký lên AuthController
-        fetch('/register?username=' + u + '&password=' + p, { method: 'POST' })
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('/register', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
             .then(response => {
-                if(response.ok) {
-                    alert("Đăng ký thành công! Chuyển sang đăng nhập.");
-                    window.location.href = "/login.html";
+                const msgBox = document.getElementById('message');
+                msgBox.style.display = 'block';
+                if (response.ok) {
+                    msgBox.style.color = '#4CAF50';
+                    msgBox.innerText = 'Đăng ký thành công! Đang chuyển hướng...';
+                    setTimeout(() => window.location.href = '/login.html', 1500);
                 } else {
-                    alert("Tên đăng nhập đã tồn tại!");
+                    response.text().then(text => {
+                        msgBox.style.color = '#FF4C4C';
+                        msgBox.innerText = text;
+                    });
                 }
             });
-    });
-</script>
+        });
+    </script>
 </body>
 </html>

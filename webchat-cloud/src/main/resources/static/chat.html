@@ -2,77 +2,589 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Web Chat Cloud</title>
+    <title>Premium Web Chat V3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
-        #chat-box { width: 400px; height: 300px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
-        .message { margin-bottom: 8px; }
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1E1E1E;
+            --surface-light: #2A2A2A;
+            --primary-gold: #FFD700;
+            --primary-gold-hover: #e6c200;
+            --text-main: #FFFFFF;
+            --text-muted: #A0A0A0;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --danger-color: #FF4C4C;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; display: flex; overflow: hidden; }
+
+        .col-left { width: 20%; background-color: var(--surface-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .col-center { width: 60%; display: flex; flex-direction: column; background-image: radial-gradient(circle at center, #1a1a1a, #121212); }
+        .col-right { width: 20%; background-color: var(--surface-color); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-gold); }
+
+        /* Left Column */
+        .profile-box { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
+        .profile-box:hover { background-color: var(--surface-light); }
+        .avatar-main { width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-gold), #b39700); display: flex; align-items: center; justify-content: center; font-size: 1.5em; color: #000; font-weight: bold; }
+        .profile-info h3 { color: var(--text-main); font-size: 1.1em; margin-bottom: 3px; }
+        .profile-info p { color: var(--text-muted); font-size: 0.8em; }
+
+        .action-buttons { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        button { background-color: var(--primary-gold); color: #000; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button:hover { background-color: var(--primary-gold-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2); }
+        button.outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        button.outline:hover { border-color: var(--primary-gold); color: var(--primary-gold); }
+        button.danger { background-color: transparent; border: 1px solid var(--danger-color); color: var(--danger-color); }
+        button.danger:hover { background-color: var(--danger-color); color: #fff; }
+        button.danger-icon { background: transparent; color: var(--danger-color); padding: 5px; font-size: 1.2em; border: none; }
+        button.danger-icon:hover { background: rgba(255, 76, 76, 0.1); }
+
+        .room-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .room-item { padding: 15px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .room-item:hover { background-color: var(--surface-light); }
+        .room-item.active { background-color: rgba(255, 215, 0, 0.08); border-left: 3px solid var(--primary-gold); }
+        .room-icon { width: 35px; height: 35px; border-radius: 50%; background: var(--surface-light); display: flex; align-items: center; justify-content: center; color: var(--primary-gold); font-weight: bold; border: 1px solid var(--primary-gold); }
+
+        /* Center Column */
+        .chat-header { padding: 20px; border-bottom: 1px solid var(--border-color); background: rgba(30,30,30,0.8); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .chat-header h2 { font-size: 1.3em; color: var(--primary-gold); margin-bottom: 5px; }
+        .chat-room-code { font-size: 0.85em; color: var(--text-muted); background: var(--surface-light); padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+        .chat-room-code:hover { color: var(--text-main); }
+        
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        
+        .message { display: flex; flex-direction: column; max-width: 65%; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .message.mine { align-self: flex-end; align-items: flex-end; }
+        .message.other { align-self: flex-start; align-items: flex-start; }
+        .message.system { align-self: center; align-items: center; max-width: 90%; }
+        
+        .msg-sender { font-size: 0.75em; color: var(--text-muted); margin-bottom: 5px; margin-left: 5px; margin-right: 5px; display: flex; gap: 8px; }
+        .msg-time { opacity: 0.7; }
+        
+        .msg-bubble { padding: 12px 18px; border-radius: 18px; line-height: 1.5; font-size: 0.95em; word-wrap: break-word; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .message.mine .msg-bubble { background: linear-gradient(135deg, var(--primary-gold), #e0be00); color: #000; border-bottom-right-radius: 4px; }
+        .message.other .msg-bubble { background-color: var(--surface-light); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); }
+        .message.system .msg-bubble { background: transparent; color: var(--text-muted); font-style: italic; font-size: 0.85em; box-shadow: none; border: none; padding: 5px; }
+        
+        .msg-bubble img { max-width: 100%; border-radius: 8px; margin-top: 5px; border: 2px solid rgba(0,0,0,0.1); cursor: pointer; }
+
+        .chat-input-wrapper { padding: 20px; background: var(--surface-color); border-top: 1px solid var(--border-color); }
+        .chat-input-box { display: flex; align-items: center; background: var(--surface-light); border-radius: 24px; padding: 5px 15px; border: 1px solid var(--border-color); transition: border 0.3s; }
+        .chat-input-box:focus-within { border-color: var(--primary-gold); box-shadow: 0 0 10px rgba(255, 215, 0, 0.1); }
+        
+        .chat-input-box input[type="text"] { flex: 1; background: transparent; border: none; color: var(--text-main); padding: 12px; outline: none; font-size: 0.95em; }
+        .icon-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1.3em; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { color: var(--primary-gold); background: rgba(255, 215, 0, 0.1); }
+        .send-btn { background: var(--primary-gold); color: #000; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; margin-left: 10px; }
+        .send-btn:hover { transform: scale(1.05); background: var(--primary-gold-hover); }
+
+        #file-input { display: none; }
+
+        /* Right Column */
+        .member-list { padding: 15px; overflow-y: auto; flex: 1; }
+        .member-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
+        .member-item:hover { background-color: var(--surface-light); }
+        .member-info { display: flex; align-items: center; gap: 10px; }
+        .avatar-small { width: 30px; height: 30px; border-radius: 50%; background-color: #444; display: flex; align-items: center; justify-content: center; font-size: 0.8em; color: var(--text-main); }
+        .role-tag { font-size: 0.65em; padding: 2px 6px; border-radius: 4px; background-color: rgba(255, 215, 0, 0.2); color: var(--primary-gold); border: 1px solid rgba(255, 215, 0, 0.3); font-weight: bold; }
+
+        .avatar-wrapper { position: relative; display: inline-block; }
+        .status-badge { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #1E1E1E; transition: background-color 0.3s ease; }
+        .status-badge.online { background-color: #4CAF50; }
+        .status-badge.offline { background-color: #FF4C4C; }
+
+        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); }
+        .empty-icon { font-size: 4em; margin-bottom: 20px; opacity: 0.5; filter: grayscale(1); transition: 0.3s; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: var(--surface-color); padding: 30px; border-radius: 12px; width: 350px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal h3 { color: var(--primary-gold); margin-bottom: 20px; text-align: center; }
+        .modal input { width: 100%; padding: 12px; background: var(--surface-light); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; outline: none; margin-bottom: 15px; }
+        .modal input:focus { border-color: var(--primary-gold); }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions button { flex: 1; }
     </style>
 </head>
 <body>
-<h2>Phòng Chat Nhóm</h2>
-<div id="chat-box"></div>
-<input type="text" id="message-input" placeholder="Nhập tin nhắn..." autocomplete="off">
-<button onclick="sendMessage()">Gửi</button>
 
-<script>
-    var stompClient = null;
-    var currentUsername = "";
+    <!-- Left Column -->
+    <div class="col-left">
+        <div class="profile-box" onclick="showModal('profileModal')">
+            <div class="avatar-main" id="myAvatar">U</div>
+            <div class="profile-info">
+                <h3 id="myDisplayName">User</h3>
+                <p id="myUsername">@username</p>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button onclick="showModal('createRoomModal')">Tạo Nhóm Mới</button>
+            <button class="outline" onclick="showModal('joinRoomModal')">Tham Gia Bằng Mã</button>
+        </div>
+        <h4 style="padding: 0 15px; color: var(--text-muted); font-size: 0.85em; text-transform: uppercase;">Nhóm của tôi</h4>
+        <div class="room-list" id="myRoomsList"></div>
+    </div>
 
-    // 1. Kiểm tra đăng nhập ngay khi mở trang
-    fetch('/api/auth/me')
-        .then(response => {
-            if(response.ok) return response.text();
-            throw new Error("Unauthorized");
-        })
-        .then(username => {
-            currentUsername = username; // Lưu lại tên thật
-            connect(); // Xác thực xong mới mở kết nối chat
-        })
-        .catch(error => {
-            window.location.href = "/login.html"; // Đá văng ra trang đăng nhập nếu chưa auth
-        });
+    <!-- Center Column -->
+    <div class="col-center">
+        <div class="chat-header" id="chatHeader" style="opacity: 0;">
+            <div>
+                <h2 id="roomTitle">Room Name</h2>
+                <div class="chat-room-code" onclick="copyRoomCode()" title="Copy Code">
+                    Mã phòng: <strong id="roomCodeDisplay">XXXXXX</strong> 📋
+                </div>
+            </div>
+            <button class="outline" style="padding: 8px 15px; font-size: 0.9em;" onclick="leaveRoom()">Rời nhóm</button>
+        </div>
+        
+        <div class="chat-messages" id="chatBox">
+            <div class="empty-state">
+                <div class="empty-icon">✨</div>
+                <p>Chọn một nhóm bên trái để bắt đầu trò chuyện</p>
+            </div>
+        </div>
 
-    function connect() {
-        var socket = new SockJS('/ws');
-        stompClient = Stomp.over(socket);
-        stompClient.connect({}, function (frame) {
-            console.log('Đã kết nối: ' + frame);
-            stompClient.subscribe('/topic/public', function (messageOutput) {
-                showMessage(JSON.parse(messageOutput.body));
-            });
-        });
-    }
-    function loadHistory() {
-    fetch('/api/messages')
-        .then(response => response.json())
-        .then(messages => {
-            messages.forEach(msg => showMessage(msg));
-        });
-    }
+        <div class="chat-input-wrapper" id="inputArea" style="opacity: 0.4; pointer-events: none;">
+            <div class="chat-input-box">
+                <input type="file" id="file-input" onchange="uploadFile()">
+                <button class="icon-btn" onclick="document.getElementById('file-input').click()" title="Đính kèm Ảnh/File">📎</button>
+                <input type="text" id="message-input" placeholder="Nhập nội dung tin nhắn..." autocomplete="off" name="chat_message_random" onkeypress="if(event.key === 'Enter') sendMessage()">
+                <button class="send-btn" onclick="sendMessage()" title="Gửi">✈️</button>
+            </div>
+        </div>
+    </div>
 
-    function sendMessage() {
-        var input = document.getElementById('message-input');
-        var messageContent = input.value.trim();
-        if(messageContent && stompClient) {
-            var chatMessage = {
-                sender: currentUsername, // Dùng tên thật lấy từ DB
-                content: messageContent
-            };
-            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
-            input.value = '';
+    <!-- Right Column -->
+    <div class="col-right">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border-color);">
+            <h3 id="onlineCountText" style="font-size: 1em; color: var(--text-main);">Thành viên nhóm (Đang online: 0)</h3>
+        </div>
+        <div class="member-list" id="membersList">
+            <div style="text-align:center; color: var(--text-muted); font-size: 0.9em; margin-top: 20px;">Chưa chọn nhóm</div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <h3>Hồ Sơ Của Bạn</h3>
+            <input type="text" id="editDisplayName" placeholder="Tên hiển thị mới...">
+            <input type="password" id="editPassword" placeholder="Mật khẩu mới (bỏ trống nếu không đổi)...">
+            <div class="modal-actions" style="margin-bottom: 15px;">
+                <button onclick="saveProfile()">Lưu Thay Đổi</button>
+                <button class="outline" onclick="closeModal('profileModal')">Đóng</button>
+            </div>
+            <form id="logoutForm" action="/logout" method="post" onsubmit="handleLogout(event)">
+                <button type="submit" class="danger" style="width: 100%;">Đăng Xuất</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="createRoomModal" class="modal">
+        <div class="modal-content">
+            <h3>Tạo Nhóm Mới</h3>
+            <input type="text" id="newRoomName" placeholder="Tên nhóm...">
+            <input type="text" id="newRoomPwd" placeholder="Mật khẩu phòng (Tùy chọn)">
+            <div class="modal-actions">
+                <button onclick="createRoom()">Tạo Ngay</button>
+                <button class="outline" onclick="closeModal('createRoomModal')">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="joinRoomModal" class="modal">
+        <div class="modal-content">
+            <h3>Tham Gia Nhóm</h3>
+            <input type="text" id="joinRoomCode" placeholder="Mã phòng (Code)...">
+            <input type="password" id="joinRoomPwd" placeholder="Mật khẩu phòng (nếu có)">
+            <div class="modal-actions">
+                <button onclick="joinRoom()">Tham Gia</button>
+                <button class="outline" onclick="closeModal('joinRoomModal')">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let systemClient = null;
+        let currentUsername = "";
+        let currentDisplayName = "";
+        let currentRoomId = null;
+        let isLeaderCurrentRoom = false;
+
+        // Init
+        fetch('/api/auth/me')
+            .then(res => { if(res.ok) return res.text(); throw new Error("Unauthorized"); })
+            .then(username => {
+                currentUsername = username;
+                currentDisplayName = username; // Assume same until fetched properly if needed.
+                document.getElementById('myUsername').innerText = '@' + username;
+                document.getElementById('myAvatar').innerText = username.charAt(0).toUpperCase();
+                document.getElementById('myDisplayName').innerText = username;
+                
+                connectSystemChannel(username);
+                loadMyRooms();
+            })
+            .catch(() => window.location.href = "/login.html");
+
+        // Profile
+        function saveProfile() {
+            const dn = document.getElementById('editDisplayName').value;
+            const pw = document.getElementById('editPassword').value;
+            
+            const formData = new URLSearchParams();
+            if(dn) formData.append('displayName', dn);
+            if(pw) formData.append('password', pw);
+
+            fetch('/api/users/me', { method: 'PUT', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    if(data.displayName) {
+                        currentDisplayName = data.displayName;
+                        document.getElementById('myDisplayName').innerText = data.displayName;
+                        document.getElementById('myAvatar').innerText = data.displayName.charAt(0).toUpperCase();
+                    }
+                    closeModal('profileModal');
+                });
         }
-    }
 
-    function showMessage(message) {
-        var chatBox = document.getElementById('chat-box');
-        var p = document.createElement('p');
-        p.className = "message";
-        p.appendChild(document.createTextNode(message.sender + ": " + message.content));
-        chatBox.appendChild(p);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-</script>
+        function handleLogout(event) {
+            event.preventDefault();
+            if(stompClient) stompClient.disconnect();
+            if(systemClient) systemClient.disconnect();
+            document.getElementById('logoutForm').submit();
+        }
+
+        window.addEventListener('beforeunload', function (e) {
+            if(stompClient) stompClient.disconnect();
+            if(systemClient) systemClient.disconnect();
+        });
+
+        // Security / System Channel
+        function connectSystemChannel(username) {
+            const socket = new SockJS('/ws');
+            systemClient = Stomp.over(socket);
+            systemClient.debug = null;
+            systemClient.connect({}, function () {
+                systemClient.subscribe(`/topic/user/${username}`, function (payload) {
+                    const msg = JSON.parse(payload.body);
+                    if (msg.type === 'LOCK') {
+                        alert("Tài khoản của bạn đã bị khóa bởi Admin!");
+                        window.location.href = '/login.html';
+                    }
+                });
+            });
+        }
+
+        // Rooms API
+        function loadMyRooms() {
+            fetch('/api/rooms/my').then(res => res.json()).then(rooms => {
+                const list = document.getElementById('myRoomsList');
+                list.innerHTML = '';
+                rooms.forEach(r => {
+                    const div = document.createElement('div');
+                    div.className = `room-item ${currentRoomId === r.id ? 'active' : ''}`;
+                    div.innerHTML = `
+                        <div class="room-icon">${r.name.charAt(0).toUpperCase()}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:600; color: ${currentRoomId === r.id ? 'var(--primary-gold)' : '#fff'}">${r.name}</div>
+                            <div style="font-size:0.75em; color:var(--text-muted)">${r.role === 'LEADER' ? '👑 Leader' : 'Thành viên'}</div>
+                        </div>
+                    `;
+                    div.onclick = () => selectRoom(r.id, r.name, r.roomCode, r.role);
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        function createRoom() {
+            const name = document.getElementById('newRoomName').value;
+            const pwd = document.getElementById('newRoomPwd').value;
+            if(!name) return;
+
+            const formData = new URLSearchParams();
+            formData.append('name', name);
+            if(pwd) formData.append('password', pwd);
+
+            fetch('/api/rooms', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(room => {
+                    closeModal('createRoomModal');
+                    document.getElementById('newRoomName').value = '';
+                    document.getElementById('newRoomPwd').value = '';
+                    loadMyRooms();
+                    alert(`Tạo thành công! Mã phòng của bạn là: ${room.roomCode}`);
+                    selectRoom(room.id, room.name, room.roomCode, 'LEADER');
+                });
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('joinRoomCode').value;
+            const pwd = document.getElementById('joinRoomPwd').value;
+            if(!code) return;
+
+            const formData = new URLSearchParams();
+            formData.append('roomCode', code);
+            if(pwd) formData.append('password', pwd);
+
+            fetch('/api/rooms/join-code', { method: 'POST', body: formData })
+                .then(res => {
+                    if(res.ok) {
+                        res.json().then(data => {
+                            closeModal('joinRoomModal');
+                            document.getElementById('joinRoomCode').value = '';
+                            document.getElementById('joinRoomPwd').value = '';
+                            loadMyRooms();
+                        });
+                    } else {
+                        res.json().then(data => alert(data.message));
+                    }
+                });
+        }
+
+        function leaveRoom() {
+            if(!currentRoomId) return;
+            if(confirm("Xác nhận rời nhóm? Nhóm sẽ bị xóa nếu không còn ai.")) {
+                fetch(`/api/rooms/${currentRoomId}/leave`, { method: 'POST' })
+                    .then(() => {
+                        currentRoomId = null;
+                        document.getElementById('chatHeader').style.opacity = '0';
+                        document.getElementById('chatBox').innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>Chọn một nhóm bên trái để bắt đầu</p></div>';
+                        document.getElementById('membersList').innerHTML = '<div style="text-align:center; color: var(--text-muted); font-size: 0.9em; margin-top: 20px;">Chưa chọn nhóm</div>';
+                        document.getElementById('inputArea').style.opacity = '0.4';
+                        document.getElementById('inputArea').style.pointerEvents = 'none';
+                        if(stompClient) stompClient.disconnect();
+                        loadMyRooms();
+                    });
+            }
+        }
+
+        function kickMember(userId) {
+            if(confirm("Loại thành viên này khỏi nhóm?")) {
+                fetch(`/api/rooms/${currentRoomId}/kick/${userId}`, { method: 'DELETE' })
+                    .then(res => {
+                        if(res.ok) loadMembers(currentRoomId);
+                        else res.json().then(data => alert(data.message));
+                    });
+            }
+        }
+
+        function copyRoomCode() {
+            const code = document.getElementById('roomCodeDisplay').innerText;
+            navigator.clipboard.writeText(code);
+            alert("Đã copy mã phòng: " + code);
+        }
+
+        // Chat Logic
+        function selectRoom(id, name, code, userRoleInRoom) {
+            currentRoomId = id;
+            isLeaderCurrentRoom = (userRoleInRoom === 'LEADER');
+            
+            document.getElementById('chatHeader').style.opacity = '1';
+            document.getElementById('roomTitle').innerText = name;
+            document.getElementById('roomCodeDisplay').innerText = code;
+            
+            document.getElementById('inputArea').style.opacity = '1';
+            document.getElementById('inputArea').style.pointerEvents = 'auto';
+            document.getElementById('message-input').value = '';
+            
+            loadMyRooms();
+            loadMembers(id);
+            connectWebSocket(id);
+            loadChatHistory(id);
+        }
+
+        function loadMembers(roomId) {
+            fetch(`/api/rooms/${roomId}/members`).then(res => res.json()).then(members => {
+                const list = document.getElementById('membersList');
+                list.innerHTML = '';
+                let onlineCount = 0;
+                members.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'member-item';
+                    div.id = 'member-' + m.username;
+                    
+                    let kickBtn = '';
+                    if (isLeaderCurrentRoom && m.username !== currentUsername && m.role !== 'LEADER') {
+                        kickBtn = `<button class="danger-icon" onclick="kickMember(${m.id})" title="Kick User">✖</button>`;
+                    }
+
+                    if (m.isOnline) onlineCount++;
+                    const statusClass = m.isOnline ? 'online' : 'offline';
+
+                    div.innerHTML = `
+                        <div class="member-info">
+                            <div class="avatar-wrapper">
+                                <div class="avatar-small">${(m.displayName || m.username).charAt(0).toUpperCase()}</div>
+                                <div class="status-badge ${statusClass}"></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9em; font-weight: 500;" class="member-name">${m.displayName || m.username}</div>
+                                ${m.role === 'LEADER' ? '<div class="role-tag">LEADER</div>' : ''}
+                            </div>
+                        </div>
+                        ${kickBtn}
+                    `;
+                    list.appendChild(div);
+                });
+                document.getElementById('onlineCountText').innerText = `Thành viên nhóm (Đang online: ${onlineCount})`;
+            });
+        }
+
+        function connectWebSocket(roomId) {
+            if (stompClient) stompClient.disconnect();
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.connect({}, function () {
+                // Lấy username hiện tại (đã lưu ở biến global lúc đăng nhập)
+                const myMemberTag = document.getElementById('member-' + currentUsername);
+                if (myMemberTag) {
+                    const myBadge = myMemberTag.querySelector('.status-badge');
+                    if (myBadge && myBadge.classList.contains('offline')) {
+                        myBadge.classList.remove('offline');
+                        myBadge.classList.add('online');
+                        // Đồng thời cập nhật lại biến #onlineCountText
+                        const count = document.querySelectorAll('.status-badge.online').length;
+                        document.getElementById('onlineCountText').innerText = `Thành viên nhóm (Đang online: ${count})`;
+                    }
+                }
+
+                stompClient.subscribe(`/topic/room/${roomId}`, function (payload) {
+                    const msg = JSON.parse(payload.body);
+                    if(msg.messageType === 'SYSTEM' && msg.content.startsWith("STATUS_")) {
+                        handleStatusChange(msg.content);
+                    } else {
+                        showMessage(msg);
+                        if(msg.messageType === 'SYSTEM') {
+                            loadMembers(roomId); // refresh member list if join/leave
+                        }
+                    }
+                });
+            });
+        }
+
+        function handleStatusChange(content) {
+            const parts = content.split(":");
+            if (parts.length === 2) {
+                const status = parts[0]; // STATUS_ONLINE or STATUS_OFFLINE
+                const username = parts[1];
+                const memberRow = document.getElementById('member-' + username);
+                if (memberRow) {
+                    const badge = memberRow.querySelector('.status-badge');
+                    if (badge) {
+                        if (status === 'STATUS_ONLINE') {
+                            badge.className = 'status-badge online';
+                        } else {
+                            badge.className = 'status-badge offline';
+                        }
+                    }
+                }
+                // Recalculate online count
+                const count = document.querySelectorAll('.status-badge.online').length;
+                document.getElementById('onlineCountText').innerText = `Thành viên nhóm (Đang online: ${count})`;
+            }
+        }
+
+        function loadChatHistory(roomId) {
+            fetch(`/api/messages/${roomId}`)
+                .then(res => res.json())
+                .then(messages => {
+                    const chatBox = document.getElementById('chatBox');
+                    chatBox.innerHTML = '';
+                    messages.forEach(msg => showMessage(msg));
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            if(content && stompClient && currentRoomId) {
+                const msg = { sender: currentUsername, content: content, messageType: 'TEXT' };
+                stompClient.send(`/app/chat.sendMessage/${currentRoomId}`, {}, JSON.stringify(msg));
+                input.value = '';
+            }
+        }
+
+        function uploadFile() {
+            const input = document.getElementById('file-input');
+            if(input.files.length === 0) return;
+            
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            document.getElementById('message-input').placeholder = "Đang tải file lên...";
+
+            fetch('/api/upload', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('message-input').placeholder = "Nhập nội dung tin nhắn...";
+                    if(data.fileUrl && stompClient && currentRoomId) {
+                        const type = file.type.startsWith('image/') ? 'IMAGE' : 'FILE';
+                        const msg = { 
+                            sender: currentUsername, 
+                            content: data.fileName, 
+                            messageType: type,
+                            fileUrl: data.fileUrl
+                        };
+                        stompClient.send(`/app/chat.sendMessage/${currentRoomId}`, {}, JSON.stringify(msg));
+                        input.value = '';
+                    }
+                })
+                .catch(err => {
+                    alert("Upload thất bại!");
+                    document.getElementById('message-input').placeholder = "Nhập nội dung tin nhắn...";
+                });
+        }
+
+        function showMessage(msg) {
+            const chatBox = document.getElementById('chatBox');
+            if(chatBox.querySelector('.empty-state')) chatBox.innerHTML = '';
+
+            const div = document.createElement('div');
+            
+            if (msg.messageType === 'SYSTEM') {
+                div.className = 'message system';
+                div.innerHTML = `<div class="msg-bubble">${msg.content}</div>`;
+            } else {
+                const isMine = msg.sender === currentUsername;
+                div.className = `message ${isMine ? 'mine' : 'other'}`;
+                
+                let contentHtml = '';
+                if (msg.messageType === 'IMAGE' && msg.fileUrl) {
+                    contentHtml = `<img src="${msg.fileUrl}" alt="image" onclick="window.open('${msg.fileUrl}', '_blank')">`;
+                } else if (msg.messageType === 'FILE' && msg.fileUrl) {
+                    contentHtml = `📎 <a href="${msg.fileUrl}" target="_blank">${msg.content}</a>`;
+                } else {
+                    contentHtml = msg.content;
+                }
+
+                const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) : '';
+
+                div.innerHTML = `
+                    <div class="msg-sender">${isMine ? '' : msg.sender} <span class="msg-time">${timeStr}</span></div>
+                    <div class="msg-bubble">${contentHtml}</div>
+                `;
+            }
+
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    </script>
 </body>
 </html>

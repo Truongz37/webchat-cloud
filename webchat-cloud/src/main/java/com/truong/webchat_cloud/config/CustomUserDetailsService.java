@@ -3,6 +3,7 @@ package com.truong.webchat_cloud.config;
 import com.truong.webchat_cloud.entity.User;
 import com.truong.webchat_cloud.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -19,6 +20,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Tìm user trong Database
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy user: " + username));
+        if (user.isLocked()) {
+            throw new LockedException("Tài khoản này đã bị khóa!");
+        }
 
         // Chuyển đổi User của mình thành UserDetails của Spring Security
         return org.springframework.security.core.userdetails.User.builder()

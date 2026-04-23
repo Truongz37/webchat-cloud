@@ -24,7 +24,18 @@ public class SecurityConfig {
                 .formLogin(login -> login
                         .loginPage("/login.html")
                         .loginProcessingUrl("/login")
-                        .defaultSuccessUrl("/chat.html", true)
+                        // XÓA DÒNG defaultSuccessUrl CŨ VÀ THAY BẰNG ĐOẠN NÀY:
+                        .successHandler((request, response, authentication) -> {
+                            // Kiểm tra xem user đăng nhập có quyền ADMIN không
+                            boolean isAdmin = authentication.getAuthorities().stream()
+                                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+                            if (isAdmin) {
+                                response.sendRedirect("/admin.html");
+                            } else {
+                                response.sendRedirect("/chat.html");
+                            }
+                        })
                         .permitAll()
                 )
                 .logout(logout -> logout.permitAll());

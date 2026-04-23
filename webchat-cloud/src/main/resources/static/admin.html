@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - Premium Web Chat</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1E1E1E;
+            --surface-light: #2A2A2A;
+            --primary-gold: #FFD700;
+            --primary-gold-hover: #e6c200;
+            --text-color: #FFFFFF;
+            --text-muted: #A0A0A0;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --danger-color: #FF4C4C;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; height: 100vh; }
+
+        .sidebar { width: 250px; background-color: var(--surface-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 20px 0; }
+        .sidebar h2 { color: var(--primary-gold); text-align: center; margin-bottom: 30px; letter-spacing: 1px; }
+
+        .nav-item { padding: 15px 25px; cursor: pointer; transition: all 0.3s ease; border-left: 4px solid transparent; color: var(--text-muted); }
+        .nav-item:hover, .nav-item.active { background-color: rgba(255, 215, 0, 0.05); color: var(--primary-gold); border-left-color: var(--primary-gold); }
+
+        .content { flex: 1; padding: 40px; overflow-y: auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h3 { color: var(--primary-gold); margin-bottom: 25px; font-size: 1.5em; font-weight: 600; }
+
+        .filter-bar { display: flex; gap: 15px; margin-bottom: 25px; align-items: center; background: var(--surface-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .filter-bar label { color: var(--text-muted); font-size: 0.9em; }
+        input[type="date"], input[type="text"], input[type="password"] { background-color: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; outline: none; }
+        input:focus { border-color: var(--primary-gold); }
+
+        button { background-color: var(--primary-gold); color: #000; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        button:hover { background-color: var(--primary-gold-hover); transform: translateY(-1px); }
+        button.outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); }
+        button.outline:hover { border-color: var(--primary-gold); color: var(--primary-gold); }
+        button.danger { background-color: transparent; border: 1px solid var(--danger-color); color: var(--danger-color); }
+        button.danger:hover { background-color: var(--danger-color); color: #fff; }
+
+        table { width: 100%; border-collapse: collapse; background-color: var(--surface-color); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: rgba(255, 215, 0, 0.05); color: var(--primary-gold); font-weight: 600; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; }
+        tr:hover { background-color: rgba(255, 255, 255, 0.02); }
+
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 600; }
+        .status-active { background-color: rgba(76, 175, 80, 0.15); color: #4caf50; border: 1px solid rgba(76, 175, 80, 0.3); }
+        .status-locked { background-color: rgba(255, 76, 76, 0.15); color: var(--danger-color); border: 1px solid rgba(255, 76, 76, 0.3); }
+
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: var(--surface-color); padding: 30px; border-radius: 12px; width: 350px; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal h3 { color: var(--primary-gold); margin-bottom: 20px; text-align: center; }
+        .modal input { width: 100%; margin-bottom: 15px; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions button { flex: 1; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>ADMIN PANEL</h2>
+        <div class="nav-item active" onclick="switchTab('usersTab', this)">Quản lý Người Dùng</div>
+        <div class="nav-item" onclick="switchTab('roomsTab', this)">Quản lý Nhóm</div>
+        <div class="nav-item" onclick="switchTab('logsTab', this)">Nhật ký Hệ Thống</div>
+        <div class="nav-item" style="margin-top: auto;" onclick="window.location.href='/chat.html'">Về trang Chat</div>
+    </div>
+
+    <div class="content">
+        <!-- Users Tab -->
+        <div id="usersTab" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="margin: 0;">Quản lý Người Dùng</h3>
+                <button onclick="showModal('createUserModal')">+ Tạo Tài Khoản</button>
+            </div>
+            
+            <div class="filter-bar">
+                <label>Từ ngày:</label>
+                <input type="date" id="startDate">
+                <label>Đến ngày:</label>
+                <input type="date" id="endDate">
+                <button onclick="loadUsers()">Lọc Dữ Liệu</button>
+                <button class="danger" onclick="clearFilter()">Xóa Lọc</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên đăng nhập</th>
+                        <th>Tên hiển thị</th>
+                        <th>Vai trò</th>
+                        <th>Ngày tạo</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Rooms Tab -->
+        <div id="roomsTab" class="tab-content">
+            <h3>Quản lý Nhóm</h3>
+            <button onclick="loadRooms()" style="margin-bottom: 20px;">Làm mới danh sách</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Mã Phòng</th>
+                        <th>Tên nhóm</th>
+                        <th>Ngày tạo</th>
+                        <th>Số thành viên</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="roomTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logsTab" class="tab-content">
+            <h3>Nhật ký Hệ Thống</h3>
+            <button onclick="loadLogs()" style="margin-bottom: 20px;">Làm mới</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Thời gian</th>
+                        <th>Người thực hiện</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="createUserModal" class="modal">
+        <div class="modal-content">
+            <h3>Tạo Tài Khoản Mới</h3>
+            <input type="text" id="newUsername" placeholder="Tên đăng nhập">
+            <input type="password" id="newPassword" placeholder="Mật khẩu">
+            <div class="modal-actions">
+                <button onclick="createUser()">Tạo</button>
+                <button class="outline" onclick="closeModal('createUserModal')">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+            if (tabId === 'usersTab') loadUsers();
+            if (tabId === 'roomsTab') loadRooms();
+            if (tabId === 'logsTab') loadLogs();
+        }
+
+        // Users
+        function loadUsers() {
+            let url = '/api/admin/users';
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if (start && end) {
+                url += `?startDate=${start}T00:00:00&endDate=${end}T23:59:59`;
+            }
+            fetch(url).then(res => res.json()).then(users => {
+                const tbody = document.getElementById('userTableBody');
+                tbody.innerHTML = '';
+                users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    
+                    let statusHtml = '';
+                    if (u.locked) {
+                        statusHtml = '<span class="status-badge status-locked">Bị khóa</span>';
+                    } else if (u.online) { // <--- SỬA CHỮ isOnline THÀNH online Ở ĐÂY
+                        statusHtml = '<span class="status-badge status-active">Online</span>';
+                    } else {
+                        statusHtml = '<span class="status-badge" style="background-color: rgba(160, 160, 160, 0.15); color: var(--text-muted); border: 1px solid rgba(160, 160, 160, 0.3);">Offline</span>';
+                    }
+
+                    tr.innerHTML = `
+                        <td>#${u.id}</td>
+                        <td style="font-weight: 500;">${u.username}</td>
+                        <td>${u.displayName || u.username}</td>
+                        <td style="color: var(--text-muted);">${u.role}</td>
+                        <td>${u.createdAt ? new Date(u.createdAt).toLocaleString('vi-VN') : 'N/A'}</td>
+                        <td>${statusHtml}</td>
+                        <td>
+                            ${u.role !== 'ROLE_ADMIN' ? `<button class="${u.locked ? '' : 'danger'}" onclick="toggleLock(${u.id})">${u.locked ? 'Mở Khóa' : 'Khóa'}</button>` : '<span style="color:var(--primary-gold)">Admin</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function clearFilter() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            loadUsers();
+        }
+
+        function toggleLock(id) {
+            fetch(`/api/admin/users/${id}/lock`, { method: 'PUT' })
+                .then(() => loadUsers());
+        }
+
+        function createUser() {
+            const username = document.getElementById('newUsername').value;
+            const pass = document.getElementById('newPassword').value;
+            if(!username || !pass) return alert("Vui lòng nhập đầy đủ");
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', pass);
+
+            fetch('/api/admin/users', { method: 'POST', body: formData })
+                .then(res => {
+                    if(res.ok) {
+                        closeModal('createUserModal');
+                        document.getElementById('newUsername').value = '';
+                        document.getElementById('newPassword').value = '';
+                        loadUsers();
+                        alert("Tạo tài khoản thành công!");
+                    } else {
+                        res.json().then(data => alert(data.message));
+                    }
+                });
+        }
+
+        // Rooms
+        function loadRooms() {
+            fetch('/api/admin/rooms').then(res => res.json()).then(rooms => {
+                const tbody = document.getElementById('roomTableBody');
+                tbody.innerHTML = '';
+                rooms.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>#${r.id}</td>
+                        <td style="font-weight:bold; color:var(--primary-gold)">${r.roomCode}</td>
+                        <td style="font-weight: 500;">${r.name}</td>
+                        <td>${r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</td>
+                        <td>${r.memberCount} thành viên</td>
+                        <td><button class="danger" onclick="deleteRoom(${r.id})">Xóa Nhóm</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function deleteRoom(id) {
+            if (confirm('Cảnh báo: Hành động này sẽ xóa vĩnh viễn nhóm và toàn bộ tin nhắn. Bạn chắc chứ?')) {
+                fetch(`/api/admin/rooms/${id}`, { method: 'DELETE' }).then(() => loadRooms());
+            }
+        }
+
+        // Logs
+        function loadLogs() {
+            fetch('/api/admin/logs').then(res => res.json()).then(logs => {
+                const tbody = document.getElementById('logTableBody');
+                tbody.innerHTML = '';
+                logs.forEach(l => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>#${l.id}</td>
+                        <td style="color:var(--text-muted)">${new Date(l.timestamp).toLocaleString('vi-VN')}</td>
+                        <td style="font-weight:bold; color:var(--primary-gold)">${l.username}</td>
+                        <td>${l.action}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        // Utils
+        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        loadUsers();
+        setInterval(loadUsers, 5000);
+    </script>
+</body>
+</html>
