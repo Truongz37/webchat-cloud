@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng ký Web Chat</title>
+</head>
+<body>
+<h2>Đăng ký Tài khoản</h2>
+<form id="registerForm">
+    <input type="text" id="username" placeholder="Tên đăng nhập" required>
+    <input type="password" id="password" placeholder="Mật khẩu" required>
+    <button type="submit">Đăng ký</button>
+</form>
+<p>Đã có tài khoản? <a href="/login.html">Đăng nhập ngay</a></p>
+
+<script>
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const u = document.getElementById('username').value;
+        const p = document.getElementById('password').value;
+
+        // Gửi dữ liệu đăng ký lên AuthController
+        fetch('/register?username=' + u + '&password=' + p, { method: 'POST' })
+            .then(response => {
+                if(response.ok) {
+                    alert("Đăng ký thành công! Chuyển sang đăng nhập.");
+                    window.location.href = "/login.html";
+                } else {
+                    alert("Tên đăng nhập đã tồn tại!");
+                }
+            });
+    });
+</script>
+</body>
+</html>
