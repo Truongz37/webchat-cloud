@@ -23,6 +23,7 @@ public class SecurityConfig {
                 )
                 .formLogin(login -> login
                         .loginPage("/login.html")
+                        .loginProcessingUrl("/login")
                         .defaultSuccessUrl("/chat.html", true)
                         .permitAll()
                 )
